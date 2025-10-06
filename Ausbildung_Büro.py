@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import textwrap
+import html
+import json
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Seiteneinstellungen
@@ -19,10 +21,6 @@ st.caption("Hinweis: Keine personenbezogenen oder internen Unternehmensdaten ein
 # Hilfsfunktionen
 # ────────────────────────────────────────────────────────────────────────────────
 def combo_field(label: str, suggestions: list[str], key_text: str, key_multiselect: str):
-    """
-    Kombiniert Vorschlagsliste (Mehrfachauswahl) mit eigener Freitexteingabe (eine pro Zeile).
-    Gibt eine zusammengeführte Liste zurück (ohne Leerzeilen).
-    """
     st.markdown(f"**{label}**")
     chosen = st.multiselect(
         f"{label} · Vorschläge (Mehrfachauswahl möglich)",
@@ -44,6 +42,59 @@ def bullet(lines: list[str]) -> str:
 def section(title: str) -> str:
     return f"\n## {title}\n"
 
+def daterange_str(d1: date, d2: date) -> str:
+    if d1 == d2:
+        return d1.strftime("%d.%m.%Y")
+    return f"{d1.strftime('%d.%m.%Y')} – {d2.strftime('%d.%m.%Y')}"
+
+def copy_button(text: str, key: str, label: str = "📋 In Zwischenablage"):
+    """
+    Robuster Copy-Button via components.html.
+    Nutzt navigator.clipboard; fällt bei restriktiven Browsern auf Auswahl+Copy zurück.
+    """
+    # Für JS sicher serialisieren
+    js_payload = json.dumps(text)
+    btn_id = f"copybtn_{key}"
+    html_code = f"""
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <button id="{btn_id}" style="padding:.5rem .75rem;border:1px solid #ddd;border-radius:.5rem;cursor:pointer;">
+        {html.escape(label)}
+      </button>
+      <span id="{btn_id}_status" style="font-size:.9rem;color:#666;"></span>
+    </div>
+    <script>
+      (function(){{
+        const btn = document.getElementById("{btn_id}");
+        const status = document.getElementById("{btn_id}_status");
+        const text = {js_payload};
+        async function copyText() {{
+          try {{
+            if (navigator.clipboard && window.isSecureContext) {{
+              await navigator.clipboard.writeText(text);
+            }} else {{
+              const ta = document.createElement("textarea");
+              ta.value = text;
+              ta.style.position = "fixed";
+              ta.style.left = "-9999px";
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              document.execCommand("copy");
+              document.body.removeChild(ta);
+            }}
+            status.textContent = "Kopiert!";
+            setTimeout(()=>{{status.textContent="";}}, 2000);
+          }} catch(e) {{
+            status.textContent = "Kopieren fehlgeschlagen";
+            setTimeout(()=>{{status.textContent="";}}, 3000);
+          }}
+        }}
+        btn.addEventListener("click", copyText);
+      }})();
+    </script>
+    """
+    components.html(html_code, height=40)
+
 def dl_button(label: str, txt: str, filename: str):
     st.download_button(
         label=label,
@@ -53,7 +104,7 @@ def dl_button(label: str, txt: str, filename: str):
     )
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Sidebar: Stammdaten & Modus
+# Sidebar: Modus & Zeitraum (von–bis)
 # ────────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ Einstellungen")
@@ -62,14 +113,24 @@ with st.sidebar:
         options=["Ausbildung (Büromanagement)", "Berufsvorbereitung"],
         index=0
     )
-    heute = date.today()
-    meta_kw = st.text_input("Kalenderwoche / Zeitraum", value=f"KW {heute.isocalendar()[1]} · {heute:%d.%m.%Y}")
-    meta_jahr = st.selectbox("Ausbildungsjahr", ["1. AJ", "2. AJ", "3. AJ", "—"], index=0)
-    meta_betrieb = st.text_input("Ausbildungsbetrieb / Abteilung", value="")
-    meta_ausbilder = st.text_input("Ausbilder:in", value="")
-    meta_azubi = st.text_input("Azubi (Kürzel/Initialen)", value="")
+
+    # Standard-Zeitraum: Montag dieser Woche bis heute
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    date_from, date_to = st.date_input(
+        "Zeitraum (von – bis)",
+        value=(monday, today),
+        format="DD.MM.YYYY"
+    )
+    # Abfangen einzelner Auswahl
+    if isinstance(date_from, tuple) or isinstance(date_to, tuple):
+        # Streamlit gibt bei Fehlbedienung manchmal Tupel zurück
+        date_from = monday
+        date_to = today
+    if date_from > date_to:
+        st.error("Das Startdatum liegt nach dem Enddatum. Bitte korrigieren.")
     st.markdown("---")
-    st.markdown("**Export**: Unten Berichtsheft/Arbeitsauftrag/Prüfungsübungen generieren und als TXT/JSON herunterladen.")
+    st.markdown("**Export**: Unten Berichtsheft/Arbeitsauftrag/Prüfungsübungen generieren. Kopieren oder als TXT speichern.")
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Vorschlagslisten
@@ -173,11 +234,7 @@ st.markdown("---")
 def build_header():
     hdr = [
         f"**Modus:** {modus}",
-        f"**Zeitraum:** {meta_kw}",
-        f"**Ausbildungsjahr:** {meta_jahr}",
-        f"**Betrieb/Abteilung:** {meta_betrieb or '—'}",
-        f"**Ausbilder:in:** {meta_ausbilder or '—'}",
-        f"**Azubi:** {meta_azubi or '—'}",
+        f"**Zeitraum:** {daterange_str(date_from, date_to)}",
     ]
     return "\n".join(hdr)
 
@@ -205,9 +262,7 @@ Auftrag: Detaillierten Arbeitsauftrag formulieren.
 
 Rahmen:
 - Modus: {modus}
-- Zeitraum: {meta_kw}
-- Ausbildungsjahr: {meta_jahr}
-- Betrieb/Abteilung: {meta_betrieb or '—'}
+- Zeitraum: {daterange_str(date_from, date_to)}
 
 Schwerpunkte:
 {bullet(lf)}
@@ -237,7 +292,7 @@ Klar, prägnant, handlungsorientiert, max. 500 Wörter.
 def gen_pruefung():
     parts = []
     parts.append("Rolle: Prüfer:in (Übungsaufgaben)")
-    parts.append(f"Modus: {modus} · Zeitraum: {meta_kw} · AJ: {meta_jahr}")
+    parts.append(f"Modus: {modus} · Zeitraum: {daterange_str(date_from, date_to)}")
     parts.append(section("Aufgabenpool (wähle 2–3)"))
     parts.append(bullet(PRUEFUNGSUEBUNGEN))
     parts.append(section("Kontext aus der Praxiswoche"))
@@ -258,53 +313,33 @@ def gen_pruefung():
     return "\n".join(parts).strip()
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Ausgabe & Downloads
+# Ausgabe & Downloads + Copy-Buttons
 # ────────────────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["🧾 Berichtsheft", "🛠️ Arbeitsauftrag (Prompt)", "📝 Prüfungsübungen"])
 
 with tab1:
     txt = gen_berichtsheft()
     st.markdown(txt)
-    dl_button("⬇️ Berichtsheft als TXT", txt, f"berichtsheft_bueromanagement_{datetime.now():%Y%m%d}.txt")
+    colA, colB = st.columns([1,1])
+    with colA:
+        dl_button("⬇️ Berichtsheft als TXT", txt, f"berichtsheft_bueromanagement_{datetime.now():%Y%m%d}.txt")
+    with colB:
+        copy_button(txt, key="berichtsheft")
 
 with tab2:
     txt = gen_arbeitsauftrag()
     st.code(txt)
-    dl_button("⬇️ Arbeitsauftrag-Prompt als TXT", txt, f"arbeitsauftrag_prompt_{datetime.now():%Y%m%d}.txt")
+    colA, colB = st.columns([1,1])
+    with colA:
+        dl_button("⬇️ Arbeitsauftrag-Prompt als TXT", txt, f"arbeitsauftrag_prompt_{datetime.now():%Y%m%d}.txt")
+    with colB:
+        copy_button(txt, key="arbeitsauftrag")
 
 with tab3:
     txt = gen_pruefung()
     st.markdown(txt)
-    dl_button("⬇️ Prüfungsübungen als TXT", txt, f"pruefung_uebungen_{datetime.now():%Y%m%d}.txt")
-
-# ────────────────────────────────────────────────────────────────────────────────
-# JSON-Export (optional)
-# ────────────────────────────────────────────────────────────────────────────────
-st.markdown("---")
-with st.expander("🔧 JSON-Export (zur Weiterverarbeitung in anderen Tools)"):
-    payload = {
-        "modus": modus,
-        "zeitraum": meta_kw,
-        "ausbildungsjahr": meta_jahr,
-        "betrieb": meta_betrieb,
-        "ausbilder": meta_ausbilder,
-        "azubi": meta_azubi,
-        "schwerpunkte": lf,
-        "taetigkeiten": taetigkeiten,
-        "tools": tools,
-        "kompetenzen": kompetenzen,
-        "nachweise": nachweise,
-        "berufsschule": schule,
-        "generated": {
-            "berichtsheft": gen_berichtsheft(),
-            "arbeitsauftrag_prompt": gen_arbeitsauftrag(),
-            "pruefung": gen_pruefung(),
-        }
-    }
-    st.code(json.dumps(payload, ensure_ascii=False, indent=2))
-    st.download_button(
-        "⬇️ JSON herunterladen",
-        data=json.dumps(payload, ensure_ascii=False, indent=2),
-        file_name=f"ausbildung_bueromanagement_{datetime.now():%Y%m%d}.json",
-        mime="application/json"
-    )
+    colA, colB = st.columns([1,1])
+    with colA:
+        dl_button("⬇️ Prüfungsübungen als TXT", txt, f"pruefung_uebungen_{datetime.now():%Y%m%d}.txt")
+    with colB:
+        copy_button(txt, key="pruefung")

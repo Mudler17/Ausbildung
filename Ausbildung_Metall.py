@@ -76,21 +76,36 @@ DEFAULTS = {
     "materialien": "",
     "zeichnung": "",
     "kontext": "",
-    "__RESET__": False,
 }
 
-# ---------------------- Init Helpers ----------------------
-def ensure_defaults():
-    # Erster Lauf: Defaults setzen
-    if not st.session_state:
-        st.session_state.update(DEFAULTS)
-        return
-    # Reset gewünscht? -> State leeren und Defaults setzen
-    if st.session_state.get("__RESET__", False):
-        st.session_state.clear()
-        st.session_state.update(DEFAULTS)
+# Alle Prefixes der Kombi-Widgets (Multiselect + Freitext)
+PREFIXES = ["verfahren", "maschinen", "werkstoffe", "normen", "mess", "safety"]
+
+# ---------------------- State-Init & Reset ----------------------
+
+def init_state():
+    # Defaults laden, falls Key fehlt
+    for k, v in DEFAULTS.items():
+        st.session_state.setdefault(k, v)
+    for p in PREFIXES:
+        st.session_state.setdefault(f"{p}_ms", [])
+        st.session_state.setdefault(f"{p}_txt", "")
+
+
+def reset_all():
+    # Alle bekannten Keys auf definierte Startwerte zurücksetzen
+    for k, v in DEFAULTS.items():
+        st.session_state[k] = v
+    for p in PREFIXES:
+        st.session_state[f"{p}_ms"] = []
+        st.session_state[f"{p}_txt"] = ""
+    # Danach sofort neu laden
+    st.rerun()
+
+init_state()
 
 # ---------------------- Utility ----------------------
+
 def multiselect_with_free_text(label: str, options: list[str], key_prefix: str, height: int = 80):
     st.markdown(f"**{label}**")
     sel = st.multiselect(
@@ -101,9 +116,6 @@ def multiselect_with_free_text(label: str, options: list[str], key_prefix: str, 
     )
     own = [x.strip("- ").strip() for x in txt.splitlines() if x.strip()]
     return [*sel, *own]
-
-# ---------------------- Init ----------------------
-ensure_defaults()
 
 # ---------------------- Layout ----------------------
 colL, colR = st.columns([1, 1])
@@ -170,7 +182,7 @@ if st.button("🔧 Prompt erzeugen", use_container_width=True):
         "meta": {"erstellt": now, "builder": "Promptbuilder Metall (Azubis)"}
     }
 
-    prompt_text = textwrap.dedent(f"""Rolle & Ziel:\n{payload['rolle']} Sprich {('mich' if payload['sprache']=='Deutsch' else 'me')} im Stil: {payload['ton']}. Arbeite {('auf Deutsch' if payload['sprache']=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}\n\nKontext:\n- Lernort: {payload['lernort']}\n- Aufgabentyp: {payload['aufgabentyp']}\n- Ausbildungsjahr: {payload['rolle'].split('(AJ ')[-1].strip(')')}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {payload['zeit_min']} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(payload['didaktik']) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}\n\nAufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(payload['gewünschter_output'])}.\n2) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n3) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n4) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n5) Baue Qualitätskriterien ein (z. B. Ø, Längen, Ra, Form-/Lagetoleranzen) und Hinweise zur Selbstkontrolle.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen fürs Berichtsheft.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).\n\nAusgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)""").strip()
+    prompt_text = textwrap.dedent(f"""Rolle & Ziel:\n{payload['rolle']} Sprich {('mich' if payload['sprache']=='Deutsch' else 'me')} im Stil: {payload['ton']}. Arbeite {('auf Deutsch' if payload['sprache']=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}\n\nKontext:\n- Lernort: {payload['lernort']}\n- Aufgabentyp: {payload['aufgabentyp']}\n- Ausbildungsjahr: {st.session_state['jahr']}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {payload['zeit_min']} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(payload['didaktik']) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}\n\nAufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(payload['gewünschter_output'])}.\n2) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n3) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n4) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n5) Baue Qualitätskriterien ein (z. B. Ø, Längen, Ra, Form-/Lagetoleranzen) und Hinweise zur Selbstkontrolle.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen fürs Berichtsheft.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).\n\nAusgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)""").strip()
 
     st.success("Prompt erzeugt. Unten kopieren oder als Datei speichern.")
     st.text_area("Generierter Prompt", prompt_text, height=320)
@@ -198,8 +210,7 @@ if st.button("🔧 Prompt erzeugen", use_container_width=True):
 
 # ---------------------- Reset-Button am Ende ----------------------
 if st.button("🔄 Alle Felder zurücksetzen und neu starten", use_container_width=True):
-    st.session_state["__RESET__"] = True
-    st.rerun()
+    reset_all()
 
 # ---------------------- Footer ----------------------
 st.markdown(

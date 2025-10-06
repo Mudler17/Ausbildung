@@ -75,12 +75,6 @@ TON = ["klar & knapp", "instruktiv & geduldig", "prüfungsnah & formal", "kolleg
 # ---------------------- Layout ----------------------
 colL, colR = st.columns([1, 1])
 
-# Reset Button oben rechts
-if st.button("🔄 Felder zurücksetzen", use_container_width=False):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.experimental_rerun()
-
 with colL:
     st.subheader("1) Rahmen & Rolle")
     beruf = st.selectbox("Ausbildungsberuf", AUSBILDSBERUFE)
@@ -171,6 +165,13 @@ info.textContent = 'Kopieren nicht erlaubt. Markiere den Text und kopiere manuel
     with st.expander("Maschinenlesbare Prompt-Metadaten (JSON)"):
         st.code(json.dumps(payload, ensure_ascii=False, indent=2))
 
+# ---------------------- Reset-Button am Ende ----------------------
+if st.button("🔄 Alle Felder zurücksetzen und neu starten", use_container_width=True):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+# ---------------------- Footer ----------------------
 st.markdown(
     """---
 **Tipps:**

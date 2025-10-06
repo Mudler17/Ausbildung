@@ -1,5 +1,5 @@
 # promptbuilder_metal.py
-# Streamlit-App: Promptbuilder für Auszubildende im Metallhandwerk
+# Streamlit-App: Promptbuilder für Auszubildende im Metallhandwerk (inkl. Berufsvorbereitung)
 # Hinweis: Keine personenbezogenen oder internen Unternehmensdaten eingeben.
 
 import json
@@ -8,101 +8,81 @@ import textwrap
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Promptbuilder · Metallhandwerk (Azubis)", page_icon="🛠️", layout="wide")
+st.set_page_config(page_title="Promptbuilder · Metallhandwerk (Azubis/Berufsvorbereitung)", page_icon="🛠️", layout="wide")
 st.title("🛠️ Promptbuilder für Auszubildende im Metallhandwerk")
-st.caption("Hinweis: **Keine personenbezogenen Daten** oder **internen Unternehmensdaten** eingeben. Dieser Builder erzeugt strukturierte Prompts für KI-Hilfen im Ausbildungsalltag.")
+st.caption("Hinweis: **Keine personenbezogenen Daten** oder **internen Unternehmensdaten** eingeben. Dieser Builder erzeugt strukturierte Prompts für KI-Hilfen im Ausbildungsalltag und in der Berufsvorbereitung.")
 
-# ---------------------- Presets ----------------------
+# ---------------------- Presets (erweitert) ----------------------
 AUSBILDSBERUFE = [
     "Industriemechaniker:in", "Zerspanungsmechaniker:in", "Konstruktionsmechaniker:in",
-    "Werkzeugmechaniker:in", "Metallbauer:in Fachr. Konstruktionstechnik",
-    "Feinwerkmechaniker:in", "Mechatroniker:in"
+    "Werkzeugmechaniker:in", "Metallbauer:in Konstruktionstechnik",
+    "Feinwerkmechaniker:in", "Mechatroniker:in",
+    "Fachkraft für Metalltechnik", "Maschinen- und Anlagenführer:in",
+    "Technische:r Produktdesigner:in (Maschinenbau)"
 ]
 
+BILDUNGSGANG = ["Duale Ausbildung", "Berufsvorbereitung (BvB/BF/BBW)"]
+
 VERFAHREN = [
-    "Drehen", "Fräsen", "Bohren", "Schleifen", "Sägen", "Biegen", "Schweißen MAG", "Schweißen WIG/TIG",
-    "CNC (Sinumerik)", "CNC (Heidenhain)", "CAM", "3D-Druck (Metall)", "Montage", "Instandhaltung"
+    # Grundfertigkeiten
+    "Anreißen/Körnen", "Feilen", "Sägen (Hand/maschinell)", "Bohren", "Reiben", "Gewindeschneiden (Hand)",
+    # Umformen/Trennen/Verbinden
+    "Biegen", "Nieten", "Hartlöten", "Plasmaschneiden", "Autogenschneiden",
+    # Zerspanung/CNC
+    "Drehen", "Fräsen", "Schleifen", "CNC (Sinumerik)", "CNC (Heidenhain)", "CAM",
+    # Schweißen/Metallbau
+    "Schweißen MAG", "Schweißen WIG/TIG", "Punktschweißen",
+    # Sonstiges
+    "Montage", "Instandhaltung", "Messen/Prüfen"
 ]
 
 MASCHINEN = [
     "Konventionelle Drehmaschine", "CNC-Drehmaschine", "Konventionelle Fräsmaschine",
-    "CNC-Fräsmaschine", "Schweißgerät MAG", "Schweißgerät WIG/TIG", "Bandsäge", "Bohrmaschine Ständer",
-    "Flachschleifmaschine"
+    "CNC-Fräsmaschine", "Säulenbohrmaschine", "Bandsäge",
+    "Schweißgerät MAG", "Schweißgerät WIG/TIG", "Punktschweißgerät",
+    "Rohrbieger", "Plasmaschneider", "Autogenbrenner", "Flachschleifmaschine"
 ]
 
 WERKSTOFFE = [
-    "C45E", "S235JR", "S355", "1.4301 (V2A)", "1.4404 (V4A)", "AlMg3", "GG25", "42CrMo4"
+    "C15", "C45E", "42CrMo4", "S235JR", "S355",
+    "1.4301 (V2A)", "1.4404 (V4A)", "9SMn28 (Automatenstahl)",
+    "Al99,5", "AlCuMg1", "AlMg3", "Cu-ETP (Kupfer)", "CuZn (Messing)", "GG25"
 ]
 
 MESSMITTEL = [
-    "Messschieber 0–150 mm", "Mikrometer 0–25 mm", "Höhenreißer", "Innenmessgerät", "Rauheitsmessgerät",
-    "Winkelmesser", "Grenzlehrdorn", "Parallelendmaße"
+    "Messschieber 0–150 mm", "Tiefenmaß Messschieber", "Mikrometer 0–25 mm",
+    "Höhenreißer + Anreißplatte", "Innenmessgerät", "Winkelmesser",
+    "Rauheitsmessgerät", "Fühlerlehre", "Grenzlehrdorn", "Parallelendmaße"
 ]
 
 NORMEN = [
-    "DIN ISO 2768 (Toleranzen)", "DIN EN ISO 1101 (Form-/Lagetoleranzen)", "DIN EN ISO 1302 (Oberflächenangaben)",
-    "DIN EN ISO 9606-1 (Schweißen – Prüfungen)", "DGUV Vorschrift 1 (Sicherheit)", "Betriebsanweisung Maschine"
+    "DIN ISO 2768 (Allg. Toleranzen)", "DIN EN ISO 1101 (Form-/Lage)", "DIN EN ISO 1302 (Oberflächen)",
+    "DIN 13 (Metrische Gewinde)", "DIN EN ISO 5817 (Schweißnahtbewertung)",
+    "DIN EN ISO 9606-1 (Schweißerprüfung)", "EN ISO 4063 (Schweißprozess-Nr.)",
+    "DGUV Vorschrift 1 (Sicherheit)", "Betriebs-/Maschinenanweisung"
 ]
 
-DIDAKTIK = ["4-Stufen-Methode", "Leittextmethode", "Projektarbeit", "Lernaufgabe", "Peer-Learning"]
+DIDAKTIK = [
+    "4-Stufen-Methode", "Leittextmethode", "Projektarbeit", "Lernaufgabe",
+    "Peer-Learning", "Lernfeldorientiert", "Handlungsorientierte Unterweisung"
+]
 
 OUTPUTFORMATE = [
     "Schritt-für-Schritt-Anleitung", "Arbeitsplan/Rüstplan Tabelle", "Checkliste Sicherheit",
     "CNC-Beispiel (kommentiert)", "Quiz (10 Fragen, gemischt)", "Fehlerkatalog (Ursache→Maßnahme)",
-    "Berichtsheft-Eintrag", "Bewertungsschema (Rubrik)"
+    "Berichtsheft-Eintrag", "Bewertungsschema (Rubrik)", "Leittext/Lernaufgabe",
+    "Kompetenzraster (Kurz)", "Unterweisungsblatt (4-Stufen)", "Mini-GBU (Gefährdungsbeurteilung)"
 ]
 
 AUFGABENTYP = [
-    "Arbeitsauftrag erstellen", "CNC-Programm unterstützen", "Schweißaufgabe planen",
-    "Werkstück fertigen", "Fehlersuche durchführen", "Qualitätsprüfung planen", "Wartung planen"
+    "Arbeitsauftrag erstellen", "Grundfertigkeit üben (Feilen/Anreißen/Gewinde)",
+    "CNC-Programm unterstützen", "Schweißaufgabe planen", "Werkstück fertigen",
+    "Fehlersuche durchführen", "Qualitätsprüfung planen", "Wartung planen",
+    "PAL-Prüfungsaufgabe trainieren", "Mini-Projekt (Berufsvorbereitung)"
 ]
 
 SPRACHE = ["Deutsch", "Englisch"]
 TON = ["klar & knapp", "instruktiv & geduldig", "prüfungsnah & formal", "kollegial & motivierend"]
-
-# ---------------------- Defaults (Werte, nicht Indizes!) ----------------------
-DEFAULTS = {
-    "beruf": AUSBILDSBERUFE[0],
-    "jahr": "1",
-    "lernort": "Betrieb",
-    "aufgabentyp": AUFGABENTYP[0],
-    "output": ["Schritt-für-Schritt-Anleitung"],
-    "sprache": "Deutsch",
-    "ton": "instruktiv & geduldig",
-    "toleranzen": "",
-    "didaktik": ["4-Stufen-Methode"],
-    "lernziel": "",
-    "zeit": 60,
-    "materialien": "",
-    "zeichnung": "",
-    "kontext": "",
-}
-
-# Alle Prefixes der Kombi-Widgets (Multiselect + Freitext)
-PREFIXES = ["verfahren", "maschinen", "werkstoffe", "normen", "mess", "safety"]
-
-# ---------------------- State-Init & Reset ----------------------
-
-def init_state():
-    # Defaults laden, falls Key fehlt
-    for k, v in DEFAULTS.items():
-        st.session_state.setdefault(k, v)
-    for p in PREFIXES:
-        st.session_state.setdefault(f"{p}_ms", [])
-        st.session_state.setdefault(f"{p}_txt", "")
-
-
-def reset_all():
-    # Alle bekannten Keys auf definierte Startwerte zurücksetzen
-    for k, v in DEFAULTS.items():
-        st.session_state[k] = v
-    for p in PREFIXES:
-        st.session_state[f"{p}_ms"] = []
-        st.session_state[f"{p}_txt"] = ""
-    # Danach sofort neu laden
-    st.rerun()
-
-init_state()
 
 # ---------------------- Utility ----------------------
 
@@ -122,9 +102,10 @@ colL, colR = st.columns([1, 1])
 
 with colL:
     st.subheader("1) Rahmen & Rolle")
-    beruf = st.selectbox("Ausbildungsberuf", AUSBILDSBERUFE, key="beruf")
-    ausbildungsjahr = st.selectbox("Ausbildungsjahr", ["1", "2", "3", "4"], key="jahr")
-    lernort = st.selectbox("Lernort", ["Betrieb", "ÜBA", "Berufsschule", "Prüfungsvorbereitung"], key="lernort")
+    bildungsgang = st.selectbox("Bildungsgang", BILDUNGSGANG, key="bildungsgang")
+    beruf = st.selectbox("Ausbildungsberuf / Zielberuf", AUSBILDSBERUFE, key="beruf")
+    ausbildungsjahr = st.selectbox("Ausbildungsjahr (falls zutreffend)", ["1", "2", "3", "4"], key="jahr")
+    lernort = st.selectbox("Lernort", ["Betrieb", "ÜBA", "Berufsschule", "Prüfungsvorbereitung", "Berufsvorbereitung"], key="lernort")
     aufgabentyp = st.selectbox("Aufgabentyp", AUFGABENTYP, key="aufgabentyp")
     outputformat = st.multiselect("Gewünschtes Output-Format", OUTPUTFORMATE, key="output")
     sprache = st.selectbox("Sprache", SPRACHE, key="sprache")
@@ -159,34 +140,35 @@ kontext = st.text_area("Kontext/Startlage (z. B. Werkstückbeschreibung, Ist-Sta
 if st.button("🔧 Prompt erzeugen", use_container_width=True):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     payload = {
-        "rolle": f"Du bist Ausbilder:in/Coach im Metallhandwerk für {st.session_state['beruf']} (AJ {st.session_state['jahr']}).",
-        "ziel": "Unterstütze die/den Auszubildende:n mit klaren, sicheren, normgerechten und prüfungsnahen Anweisungen.",
-        "lernort": st.session_state['lernort'],
-        "aufgabentyp": st.session_state['aufgabentyp'],
-        "sprache": st.session_state['sprache'],
-        "ton": st.session_state['ton'],
-        "didaktik": st.session_state['didaktik'],
-        "lernziel": st.session_state['lernziel'].strip(),
+        "bildungsgang": st.session_state.get('bildungsgang', ''),
+        "rolle": f"Du bist Ausbilder:in/Coach im Metallbereich für {st.session_state.get('beruf','')} (AJ {st.session_state.get('jahr','-')}).",
+        "ziel": "Unterstütze die/den Lernende:n mit klaren, sicheren, normgerechten und prüfungsnahen Anweisungen (Niveau an Bildungsgang anpassen).",
+        "lernort": st.session_state.get('lernort',''),
+        "aufgabentyp": st.session_state.get('aufgabentyp',''),
+        "sprache": st.session_state.get('sprache','Deutsch'),
+        "ton": st.session_state.get('ton','instruktiv & geduldig'),
+        "didaktik": st.session_state.get('didaktik',[]),
+        "lernziel": st.session_state.get('lernziel','').strip(),
         "verfahren": verfahren,
         "maschinen": maschinen,
         "werkstoffe": werkstoffe,
         "normen": normen,
         "messmittel": messmittel,
-        "toleranzen": st.session_state['toleranzen'].strip(),
+        "toleranzen": st.session_state.get('toleranzen','').strip(),
         "sicherheit": sicherheit,
-        "zeit_min": st.session_state['zeit'],
-        "materialliste": [x.strip() for x in st.session_state['materialien'].splitlines() if x.strip()],
-        "zeichnung_ref": st.session_state['zeichnung'].strip(),
-        "kontext": st.session_state['kontext'].strip(),
-        "gewünschter_output": st.session_state['output'],
-        "meta": {"erstellt": now, "builder": "Promptbuilder Metall (Azubis)"}
+        "zeit_min": st.session_state.get('zeit',60),
+        "materialliste": [x.strip() for x in st.session_state.get('materialien','').splitlines() if x.strip()],
+        "zeichnung_ref": st.session_state.get('zeichnung','').strip(),
+        "kontext": st.session_state.get('kontext','').strip(),
+        "gewünschter_output": st.session_state.get('output',[]),
+        "meta": {"erstellt": now, "builder": "Promptbuilder Metall (Azubis/Berufsvorbereitung)"}
     }
 
-    prompt_text = textwrap.dedent(f"""Rolle & Ziel:\n{payload['rolle']} Sprich {('mich' if payload['sprache']=='Deutsch' else 'me')} im Stil: {payload['ton']}. Arbeite {('auf Deutsch' if payload['sprache']=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}\n\nKontext:\n- Lernort: {payload['lernort']}\n- Aufgabentyp: {payload['aufgabentyp']}\n- Ausbildungsjahr: {st.session_state['jahr']}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {payload['zeit_min']} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(payload['didaktik']) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}\n\nAufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(payload['gewünschter_output'])}.\n2) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n3) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n4) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n5) Baue Qualitätskriterien ein (z. B. Ø, Längen, Ra, Form-/Lagetoleranzen) und Hinweise zur Selbstkontrolle.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen fürs Berichtsheft.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).\n\nAusgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)""").strip()
+    prompt_text = textwrap.dedent(f"""Rolle & Ziel:\n{payload['rolle']} Bildungsgang: {payload['bildungsgang']}. Sprich {('mich' if payload['sprache']=='Deutsch' else 'me')} im Stil: {payload['ton']}. Arbeite {('auf Deutsch' if payload['sprache']=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}\n\nKontext:\n- Lernort: {payload['lernort']}\n- Aufgabentyp: {payload['aufgabentyp']}\n- Ausbildungsjahr: {st.session_state.get('jahr','-')}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {payload['zeit_min']} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(payload['didaktik']) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}\n\nAufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(payload['gewünschter_output']) or '—'}.\n2) Passe Komplexität und Fachsprache an den Bildungsgang an (Berufsvorbereitung → mehr Bilder/Beispiele, einfache Sprache; Duale Ausbildung → fachlich präzise, normnah).\n3) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n4) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n5) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen; in der Berufsvorbereitung zusätzlich 1–2 Alltagsbezüge.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).\n\nAusgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)""").strip()
 
     st.success("Prompt erzeugt. Unten kopieren oder als Datei speichern.")
     st.text_area("Generierter Prompt", prompt_text, height=320)
-    st.download_button(label="⬇️ Prompt als .txt speichern", data=prompt_text, file_name=f"prompt_metall_azubis_{datetime.now().strftime('%Y%m%d_%H%M')}.txt", mime="text/plain", use_container_width=True)
+    st.download_button(label="⬇️ Prompt als .txt speichern", data=prompt_text, file_name=f"prompt_metall_{datetime.now().strftime('%Y%m%d_%H%M')}.txt", mime="text/plain", use_container_width=True)
 
     safe = prompt_text.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '&quot;').replace("'", "&#39;")
     components.html(textwrap.dedent(f"""
@@ -208,17 +190,13 @@ if st.button("🔧 Prompt erzeugen", use_container_width=True):
     with st.expander("Maschinenlesbare Prompt-Metadaten (JSON)"):
         st.code(json.dumps(payload, ensure_ascii=False, indent=2))
 
-# ---------------------- Reset-Button am Ende ----------------------
-if st.button("🔄 Alle Felder zurücksetzen und neu starten", use_container_width=True):
-    reset_all()
-
 # ---------------------- Footer ----------------------
 st.markdown(
     """---
 **Tipps:**
-- Nutze präzise Toleranzen (z. B. *Ø20 H7*, *Ra 1,6*, *➍ Ⓜ⌀0,02*), sonst fragt die KI nach.
-- Wähle *Output-Format* »Arbeitsplan/Rüstplan« für tabellarische Abläufe (Vorbereitung → Rüsten → Bearbeiten → Prüfen → Nacharbeit).
-- Für CNC: Benenne Steuerung (z. B. *Sinumerik 840D*, *Heidenhain iTNC*). Bitte **keine realen NC-Programme** mit Betriebsdaten einfügen.
-- Sicherheit geht vor: DGUV-konforme Hinweise zuerst.
+- Passe die Sprachebene an: Berufsvorbereitung → einfache Sprache, Schrittbilder/Icons; Ausbildung → fachlich präzise, Normbezug.
+- Nenne bei Gewinden *Nenndurchmesser, Steigung, Kernloch* (z. B. M6 × 1, Kernloch 5,0 mm, **DIN 13**).
+- Für Schweißen: Qualität nach **ISO 5817**, Prozessnummern nach **ISO 4063**.
+- Sicherheit geht vor: DGUV-Hinweise zuerst.
 """
 )

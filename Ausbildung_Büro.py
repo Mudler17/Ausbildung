@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from datetime import datetime, date
 import textwrap
@@ -52,7 +53,7 @@ def dl_button(label: str, txt: str, filename: str):
     )
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Stammdaten & Modus
+# Sidebar: Stammdaten & Modus
 # ────────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ Einstellungen")
@@ -68,7 +69,7 @@ with st.sidebar:
     meta_ausbilder = st.text_input("Ausbilder:in", value="")
     meta_azubi = st.text_input("Azubi (Kürzel/Initialen)", value="")
     st.markdown("---")
-    st.markdown("**Export**: Unten kannst du Berichtsheft/Arbeitsauftrag/Prüfungsübungen generieren und als TXT herunterladen.")
+    st.markdown("**Export**: Unten Berichtsheft/Arbeitsauftrag/Prüfungsübungen generieren und als TXT/JSON herunterladen.")
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Vorschlagslisten
@@ -239,4 +240,71 @@ def gen_pruefung():
     parts.append(f"Modus: {modus} · Zeitraum: {meta_kw} · AJ: {meta_jahr}")
     parts.append(section("Aufgabenpool (wähle 2–3)"))
     parts.append(bullet(PRUEFUNGSUEBUNGEN))
-    parts.append(section("Konte
+    parts.append(section("Kontext aus der Praxiswoche"))
+    if lf:
+        parts.append("**Schwerpunkte:**\n" + bullet(lf))
+    if tools:
+        parts.append("\n**Werkzeuge:**\n" + bullet(tools))
+    if schule:
+        parts.append("\n**Bezug Berufsschule:**\n" + bullet(schule))
+    parts.append(section("Abgabe & Bewertung (Kurzrubrik)"))
+    parts.append(bullet([
+        "Vollständigkeit & Nachvollziehbarkeit",
+        "Form & Layout (professionell, CI falls vorhanden)",
+        "Korrektheit (fachlich, rechnerisch)",
+        "Begründungen/Entscheidungen kurz erläutert",
+        "Zeitmanagement eingehalten"
+    ]))
+    return "\n".join(parts).strip()
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Ausgabe & Downloads
+# ────────────────────────────────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(["🧾 Berichtsheft", "🛠️ Arbeitsauftrag (Prompt)", "📝 Prüfungsübungen"])
+
+with tab1:
+    txt = gen_berichtsheft()
+    st.markdown(txt)
+    dl_button("⬇️ Berichtsheft als TXT", txt, f"berichtsheft_bueromanagement_{datetime.now():%Y%m%d}.txt")
+
+with tab2:
+    txt = gen_arbeitsauftrag()
+    st.code(txt)
+    dl_button("⬇️ Arbeitsauftrag-Prompt als TXT", txt, f"arbeitsauftrag_prompt_{datetime.now():%Y%m%d}.txt")
+
+with tab3:
+    txt = gen_pruefung()
+    st.markdown(txt)
+    dl_button("⬇️ Prüfungsübungen als TXT", txt, f"pruefung_uebungen_{datetime.now():%Y%m%d}.txt")
+
+# ────────────────────────────────────────────────────────────────────────────────
+# JSON-Export (optional)
+# ────────────────────────────────────────────────────────────────────────────────
+st.markdown("---")
+with st.expander("🔧 JSON-Export (zur Weiterverarbeitung in anderen Tools)"):
+    payload = {
+        "modus": modus,
+        "zeitraum": meta_kw,
+        "ausbildungsjahr": meta_jahr,
+        "betrieb": meta_betrieb,
+        "ausbilder": meta_ausbilder,
+        "azubi": meta_azubi,
+        "schwerpunkte": lf,
+        "taetigkeiten": taetigkeiten,
+        "tools": tools,
+        "kompetenzen": kompetenzen,
+        "nachweise": nachweise,
+        "berufsschule": schule,
+        "generated": {
+            "berichtsheft": gen_berichtsheft(),
+            "arbeitsauftrag_prompt": gen_arbeitsauftrag(),
+            "pruefung": gen_pruefung(),
+        }
+    }
+    st.code(json.dumps(payload, ensure_ascii=False, indent=2))
+    st.download_button(
+        "⬇️ JSON herunterladen",
+        data=json.dumps(payload, ensure_ascii=False, indent=2),
+        file_name=f"ausbildung_bueromanagement_{datetime.now():%Y%m%d}.json",
+        mime="application/json"
+    )

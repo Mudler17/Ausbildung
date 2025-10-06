@@ -137,69 +137,50 @@ if st.button("🔧 Prompt erzeugen", use_container_width=True):
         "meta": {"erstellt": now, "builder": "Promptbuilder Metall (Azubis)"}
     }
 
-    # Menschlich lesbarer Prompt (für Chat-Eingabe)
     prompt_text = f"""
-    Rolle & Ziel:\n{payload['rolle']} Sprich {('mich' if sprache=='Deutsch' else 'me')} im Stil: {ton}. Arbeite {('auf Deutsch' if sprache=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}
+Rolle & Ziel:\n{payload['rolle']} Sprich {('mich' if sprache=='Deutsch' else 'me')} im Stil: {ton}. Arbeite {('auf Deutsch' if sprache=='Deutsch' else 'in English')}. Ziel: {payload['ziel']}
 
-    Kontext:\n- Lernort: {lernort}\n- Aufgabentyp: {aufgabentyp}\n- Ausbildungsjahr: {ausbildungsjahr}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {zeit} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(didaktik) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}
+Kontext:\n- Lernort: {lernort}\n- Aufgabentyp: {aufgabentyp}\n- Ausbildungsjahr: {ausbildungsjahr}\n- Verfahren/Arbeitsgänge: {', '.join(verfahren) or '-'}\n- Maschinen/Steuerungen: {', '.join(maschinen) or '-'}\n- Werkstoffe: {', '.join(werkstoffe) or '-'}\n- Normen/Regeln: {', '.join(normen) or '-'}\n- Messmittel/Prüfkriterien: {', '.join(messmittel) or '-'}\n- Toleranzen: {payload['toleranzen'] or '-'}\n- Sicherheitsaspekte: {', '.join(sicherheit) or '-'}\n- Zeitrahmen: {zeit} Minuten\n- Materialien/Werkzeuge: {', '.join(payload['materialliste']) or '-'}\n- Zeichnung/Referenz: {payload['zeichnung_ref'] or '-'}\n- Startlage/typische Fehler: {payload['kontext'] or '-'}\n- Didaktik: {', '.join(didaktik) or '-'}\n- Lernziel(e): {payload['lernziel'] or '-'}
 
-    Aufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(outputformat)}.\n2) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n3) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n4) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n5) Baue Qualitätskriterien ein (z. B. Ø, Längen, Ra, Form-/Lagetoleranzen) und Hinweise zur Selbstkontrolle.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen fürs Berichtsheft.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).
-
-    Ausgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)
-    """"""
+Aufgaben an die KI:\n1) Erstelle die Ausgabe im/als: {', '.join(outputformat)}.\n2) Nenne zuerst Sicherheits-Hinweise (DGUV-konform), dann Material/Setup, dann Vorgehen.\n3) Verwende Nummerierung und, wo sinnvoll, Tabellen.\n4) Mache Maße, Toleranzen, Werkstoff und Messmittel konkret; verweise auf Normstellen (z. B. DIN ISO 2768, ISO 1302) ohne zu erfinden.\n5) Baue Qualitätskriterien ein (z. B. Ø, Längen, Ra, Form-/Lagetoleranzen) und Hinweise zur Selbstkontrolle.\n6) Gib typische Fehlerbilder + Ursachen + Gegenmaßnahmen an (Fehlerkatalog).\n7) Schließe mit Reflexionsfragen fürs Berichtsheft.\n8) Wenn Informationen fehlen, frage gezielt nach (max. 3 Rückfragen).\n\nAusgabeformat (Beispielstruktur):\n- **Sicherheit**\n- **Material & Rüstung** (Tabelle)\n- **Arbeitsablauf** (Schritte 1..n)\n- **Qualitätsprüfung** (Toleranzen/Messmittel)\n- **Fehlerkatalog**\n- **Reflexion** (3–5 Fragen)
+"""
 
     prompt_text = textwrap.dedent(prompt_text).strip()
-
     st.success("Prompt erzeugt. Unten kopieren oder als Datei speichern.")
-
-    # Anzeige & Download
     st.text_area("Generierter Prompt", prompt_text, height=320)
+    st.download_button(label="⬇️ Prompt als .txt speichern", data=prompt_text, file_name=f"prompt_metall_azubis_{datetime.now().strftime('%Y%m%d_%H%M')}.txt", mime="text/plain", use_container_width=True)
 
-    st.download_button(
-        label="⬇️ Prompt als .txt speichern",
-        data=prompt_text,
-        file_name=f"prompt_metall_azubis_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
-        mime="text/plain",
-        use_container_width=True,
-    )
+    html_code = textwrap.dedent(f"""\
+<div style='display:flex;gap:8px;align-items:center;margin-top:8px;'>
+<button id='copyBtn' style='padding:8px 12px;border-radius:10px;border:1px solid #ddd;cursor:pointer;'>📋 In Zwischenablage kopieren</button>
+<span id='copyInfo' style='opacity:0.8'></span>
+</div>
+<script>
+const text = "{prompt_text.replace('\\','\\\\').replace('\n','\\n').replace('"','&quot;').replace("'", "&#39;")}";
+const btn = document.getElementById('copyBtn');
+const info = document.getElementById('copyInfo');
+btn.addEventListener('click', async () => {{
+try {{
+await navigator.clipboard.writeText(text);
+info.textContent = 'Kopiert!';
+}} catch (e) {{
+info.textContent = 'Kopieren nicht erlaubt. Markiere den Text und kopiere manuell (Ctrl/Cmd+C).';
+}}
+}});
+</script>
+""")
+    components.html(html_code, height=60)
 
-    # Robuster Copy-to-Clipboard via JS (ohne externe Libs)
-    safe_html = prompt_text.replace("\\", "\\\\").replace("\n", "\\n").replace("'", "&#39;").replace('"', '&quot;')
-    components.html(
-        f"""
-        <div style='display:flex;gap:8px;align-items:center;margin-top:8px;'>
-          <button id='copyBtn' style='padding:8px 12px;border-radius:10px;border:1px solid #ddd;cursor:pointer;'>📋 In Zwischenablage kopieren</button>
-          <span id='copyInfo' style='opacity:0.8'></span>
-        </div>
-        <script>
-          const text = "{safe_html}";
-          const btn = document.getElementById('copyBtn');
-          const info = document.getElementById('copyInfo');
-          btn.addEventListener('click', async () => {{
-            try {{
-              await navigator.clipboard.writeText(text);
-              info.textContent = 'Kopiert!';
-            }} catch (e) {{
-              info.textContent = 'Kopieren nicht erlaubt. Markiere den Text und kopiere manuell (Ctrl/Cmd+C).';
-            }}
-          }});
-        </script>
-        """,
-        height=60,
-    )
-
-    # Zusätzlich: Maschinenlesbare JSON-Nutzlast anzeigen (für Custom GPT oder API)
     with st.expander("Maschinenlesbare Prompt-Metadaten (JSON)"):
         st.code(json.dumps(payload, ensure_ascii=False, indent=2))
 
-# ---------------------- Footer ----------------------
 st.markdown(
     """
-    ---
-    **Tipps:**
-    - Nutze präzise Toleranzen (z. B. *Ø20 H7*, *Ra 1,6*, *➍ Ⓜ⌀0,02*), sonst fragt die KI nach.
-    - Wähle *Output-Format* »Arbeitsplan/Rüstplan« für tabellarische Abläufe (Vorbereitung → Rüsten → Bearbeiten → Prüfen → Nacharbeit).
-    - Für CNC: Benenne Steuerung (z. B. *Sinumerik 840D*, *Heidenhain iTNC*). Bitte **keine realen NC-Programme** mit Betriebsdaten einfügen.
-    - Sicherheit geht vor: DGUV-konforme Hinweise zuerst.
-    """
+---
+**Tipps:**
+- Nutze präzise Toleranzen (z. B. *Ø20 H7*, *Ra 1,6*, *➍ Ⓜ⌀0,02*), sonst fragt die KI nach.
+- Wähle *Output-Format* »Arbeitsplan/Rüstplan« für tabellarische Abläufe (Vorbereitung → Rüsten → Bearbeiten → Prüfen → Nacharbeit).
+- Für CNC: Benenne Steuerung (z. B. *Sinumerik 840D*, *Heidenhain iTNC*). Bitte **keine realen NC-Programme** mit Betriebsdaten einfügen.
+- Sicherheit geht vor: DGUV-konforme Hinweise zuerst.
+"""
 )
